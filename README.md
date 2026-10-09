@@ -42,6 +42,12 @@ The key is stored only in `localStorage`.
 The upstream must allow CORS from the origin you open this file from
 (`file://` or `http://localhost`). If it does not, put a small proxy in front.
 
+## Prompt presets
+
+`presets/prompts.json` ships 25 starter system prompts (engineer, reviewer,
+debugger, tutor, translator, extractor, and more). Load one in Settings or use
+it as a template for your own.
+
 ## License
 
 MIT
