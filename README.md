@@ -1,4 +1,4 @@
-# NextChattt
+# Tiny Chat Client
 
 A tiny, dependency-free AI chat client that works with any OpenAI-compatible API.
 

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NextChattt</title>
+<title>Tiny Chat Client</title>
 <style>
   :root { --bg:#0f1117; --panel:#171a23; --border:#2a2f3d; --text:#e6e8ee; --dim:#9aa3b2; --accent:#5b8cff; --user:#20304f; }
   * { box-sizing:border-box; }
@@ -33,7 +33,7 @@
 </head>
 <body>
 <header>
-  <h1>NextChattt</h1>
+  <h1>Tiny Chat Client</h1>
   <select id="modelSelect" title="Model"></select>
   <button id="clear" title="Clear chat">Clear</button>
   <button id="settingsBtn" title="Settings">Settings</button>
@@ -65,10 +65,10 @@
 const $ = (id) => document.getElementById(id);
 const sys = { baseUrl: 'https://api.openai.com/v1', apiKey: '', model: 'gpt-4o-mini', temperature: 0.7, maxTokens: 2048 };
 const store = {
-  get: () => { try { return JSON.parse(localStorage.getItem('nextchattt.cfg') || '{}'); } catch { return {}; } },
-  set: (v) => localStorage.setItem('nextchattt.cfg', JSON.stringify(v)),
-  getChat: () => { try { return JSON.parse(localStorage.getItem('nextchattt.chat') || '[]'); } catch { return []; } },
-  setChat: (v) => localStorage.setItem('nextchattt.chat', JSON.stringify(v))
+  get: () => { try { return JSON.parse(localStorage.getItem('tinychat.cfg') || '{}'); } catch { return {}; } },
+  set: (v) => localStorage.setItem('tinychat.cfg', JSON.stringify(v)),
+  getChat: () => { try { return JSON.parse(localStorage.getItem('tinychat.chat') || '[]'); } catch { return []; } },
+  setChat: (v) => localStorage.setItem('tinychat.chat', JSON.stringify(v))
 };
 let messages = store.getChat();
 Object.assign(sys, store.get());
@@ -129,7 +129,7 @@ $('exportBtn').addEventListener('click', () => {
   const blob = new Blob([JSON.stringify(messages, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'nextchattt-' + Date.now() + '.json';
+  a.download = 'tinychat-' + Date.now() + '.json';
   a.click();
   URL.revokeObjectURL(a.href);
 });
