@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NextChattt</title>
+<style>
+  :root { --bg:#0f1117; --panel:#171a23; --border:#2a2f3d; --text:#e6e8ee; --dim:#9aa3b2; --accent:#5b8cff; --user:#20304f; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.5 system-ui,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; }
+  header { display:flex; gap:8px; align-items:center; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--panel); }
+  header h1 { font-size:15px; margin:0 auto 0 0; font-weight:600; }
+  button, select, input, textarea { font:inherit; color:var(--text); background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:7px 10px; }
+  button { cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  #chat { flex:1; overflow-y:auto; padding:18px; display:flex; flex-direction:column; gap:12px; }
+  .msg { max-width:760px; padding:10px 13px; border-radius:12px; white-space:pre-wrap; word-wrap:break-word; }
+  .user { align-self:flex-end; background:var(--user); }
+  .assistant { align-self:flex-start; background:var(--panel); border:1px solid var(--border); }
+  .meta { font-size:11px; color:var(--dim); margin-top:6px; }
+  footer { border-top:1px solid var(--border); background:var(--panel); padding:10px 14px; display:flex; gap:8px; }
+  #input { flex:1; resize:none; height:44px; max-height:160px; }
+  #send { min-width:90px; background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
+  #send:disabled { opacity:.5; cursor:default; }
+  #settings { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); place-items:center; }
+  #settings.open { display:grid; }
+  #settings form { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:20px; width:min(440px,92vw); display:flex; flex-direction:column; gap:12px; }
+  #settings label { display:flex; flex-direction:column; gap:5px; font-size:13px; color:var(--dim); }
+  .row { display:flex; gap:10px; }
+  .row > * { flex:1; }
+  .actions { display:flex; justify-content:flex-end; gap:8px; margin-top:4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>NextChattt</h1>
+  <select id="modelSelect" title="Model"></select>
+  <button id="clear" title="Clear chat">Clear</button>
+  <button id="settingsBtn" title="Settings">Settings</button>
+</header>
+<main id="chat"></main>
+<footer>
+  <textarea id="input" placeholder="Type a message… (Enter to send, Shift+Enter for newline)"></textarea>
+  <button id="send">Send</button>
+</footer>
+
+<div id="settings">
+  <form id="settingsForm">
+    <label>Base URL<input id="baseUrl" placeholder="https://api.openai.com/v1" required></label>
+    <label>API key<input id="apiKey" type="password" placeholder="sk-…"></label>
+    <label>Model<input id="model" placeholder="gpt-4o-mini" required></label>
+    <div class="row">
+      <label>Temperature<input id="temperature" type="number" step="0.1" min="0" max="2" value="0.7"></label>
+      <label>Max tokens<input id="maxTokens" type="number" min="1" value="2048"></label>
+    </div>
+    <div class="actions">
+      <button type="button" id="exportBtn">Export chat</button>
+      <button type="button" id="cancelBtn">Cancel</button>
+      <button type="submit">Save</button>
+    </div>
+  </form>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const sys = { baseUrl: 'https://api.openai.com/v1', apiKey: '', model: 'gpt-4o-mini', temperature: 0.7, maxTokens: 2048 };
+const store = {
+  get: () => { try { return JSON.parse(localStorage.getItem('nextchattt.cfg') || '{}'); } catch { return {}; } },
+  set: (v) => localStorage.setItem('nextchattt.cfg', JSON.stringify(v)),
+  getChat: () => { try { return JSON.parse(localStorage.getItem('nextchattt.chat') || '[]'); } catch { return []; } },
+  setChat: (v) => localStorage.setItem('nextchattt.chat', JSON.stringify(v))
+};
+let messages = store.getChat();
+Object.assign(sys, store.get());
+
+const render = () => {
+  const chat = $('chat');
+  chat.innerHTML = '';
+  for (const m of messages) {
+    const el = document.createElement('div');
+    el.className = 'msg ' + (m.role === 'user' ? 'user' : 'assistant');
+    el.textContent = m.content;
+    if (m.usage) {
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = m.usage;
+      el.appendChild(meta);
+    }
+    chat.appendChild(el);
+  }
+  chat.scrollTop = chat.scrollHeight;
+};
+
+const fillModelSelect = () => {
+  const presets = ['gpt-4o-mini', 'gpt-4o', 'claude-3-5-sonnet', 'deepseek-chat', 'qwen2.5-72b-instruct'];
+  const sel = $('modelSelect');
+  sel.innerHTML = '';
+  presets.forEach((m) => {
+    const o = document.createElement('option');
+    o.value = m; o.textContent = m;
+    sel.appendChild(o);
+  });
+  sel.value = presets.includes(sys.model) ? sys.model : presets[0];
+};
+
+$('modelSelect').addEventListener('change', () => { sys.model = $('modelSelect').value; store.set(sys); });
+
+$('settingsBtn').addEventListener('click', () => {
+  $('baseUrl').value = sys.baseUrl;
+  $('apiKey').value = sys.apiKey;
+  $('model').value = sys.model;
+  $('temperature').value = sys.temperature;
+  $('maxTokens').value = sys.maxTokens;
+  $('settings').classList.add('open');
+});
+$('cancelBtn').addEventListener('click', () => $('settings').classList.remove('open'));
+$('settingsForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  sys.baseUrl = $('baseUrl').value.trim().replace(/\/+$/, '');
+  sys.apiKey = $('apiKey').value.trim();
+  sys.model = $('model').value.trim();
+  sys.temperature = Number($('temperature').value);
+  sys.maxTokens = Number($('maxTokens').value);
+  store.set(sys);
+  $('settings').classList.remove('open');
+});
+$('clear').addEventListener('click', () => { messages = []; store.setChat(messages); render(); });
+$('exportBtn').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(messages, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'nextchattt-' + Date.now() + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+const send = async () => {
+  const input = $('input');
+  const text = input.value.trim();
+  if (!text) return;
+  if (!sys.apiKey) { alert('Set your API key in Settings first.'); return; }
+  input.value = '';
+  messages.push({ role: 'user', content: text });
+  render();
+  $('send').disabled = true;
+  const assistant = { role: 'assistant', content: '' };
+  messages.push(assistant);
+  render();
+  const node = $('chat').lastElementChild;
+  try {
+    const res = await fetch(sys.baseUrl + '/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + sys.apiKey },
+      body: JSON.stringify({ model: sys.model, messages: messages.filter(m => m.content), temperature: sys.temperature, max_tokens: sys.maxTokens, stream: true })
+    });
+    if (!res.ok) throw new Error(res.status + ' ' + (await res.text()).slice(0, 300));
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    let usage = null;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        const s = line.trim();
+        if (!s.startsWith('data:')) continue;
+        const data = s.slice(5).trim();
+        if (data === '[DONE]') continue;
+        try {
+          const j = JSON.parse(data);
+          const delta = j.choices?.[0]?.delta?.content;
+          if (delta) { assistant.content += delta; node.textContent = assistant.content; $('chat').scrollTop = $('chat').scrollHeight; }
+          if (j.usage) usage = j.usage;
+        } catch {}
+      }
+    }
+    if (usage) {
+      assistant.usage = `in ${usage.prompt_tokens} · out ${usage.completion_tokens} · total ${usage.total_tokens}`;
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = assistant.usage;
+      node.appendChild(meta);
+    }
+  } catch (err) {
+    assistant.content = 'Error: ' + err.message;
+    node.textContent = assistant.content;
+  } finally {
+    store.setChat(messages);
+    $('send').disabled = false;
+    input.focus();
+  }
+};
+
+$('send').addEventListener('click', send);
+$('input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+});
+
+fillModelSelect();
+render();
+$('input').focus();
+</script>
+</body>
+</html>
